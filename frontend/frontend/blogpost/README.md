@@ -15,5 +15,5 @@ npm run preview
 Create `.env` from `.env.example`:
 
 ```env
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=http://localhost:5000
 ```
