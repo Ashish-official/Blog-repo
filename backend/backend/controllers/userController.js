@@ -3,6 +3,10 @@ import jwt from "jsonwebtoken";
 import User from "../models/user.js";
 
 const createToken = (user) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET is not configured");
+  }
+
   return jwt.sign(
     { id: user._id, email: user.email, roles: user.roles },
     process.env.JWT_SECRET,
@@ -27,7 +31,10 @@ const registerUser = async (req, res) => {
         .json({ message: "Username, email and password are required" });
     }
 
-    const userExists = await User.findOne({ email });
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedRole = role === "admin" ? "admin" : "user";
+
+    const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -35,10 +42,10 @@ const registerUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     const newUser = await User.create({
-      userName,
-      email,
+      userName: userName.trim(),
+      email: normalizedEmail,
       password: hashedPassword,
-      roles: role || "user",
+      roles: normalizedRole,
     });
 
     res.status(201).json({
@@ -47,7 +54,7 @@ const registerUser = async (req, res) => {
     });
   } catch (error) {
     console.log("error", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: error.message || "Server error" });
   }
 };
 
@@ -76,7 +83,7 @@ const loginUser = async (req, res) => {
     });
   } catch (error) {
     console.log("error", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: error.message || "Server error" });
   }
 };
 
