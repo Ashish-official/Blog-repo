@@ -29,7 +29,7 @@ const AdSlot = ({ id, sizes = [[300, 250]], style }) => {
         window.googletag.defineSlot(GPT_NETWORK_PATH, sizes, id)?.addService(window.googletag.pubads());
       }
 
-      window.googletag.pubads().enableSingleRequest();
+      window.googletag.setConfig({ singleRequest: true });
       window.googletag.enableServices();
       window.googletag.display(id);
     });
