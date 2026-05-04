@@ -9,6 +9,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+let dbConnectionPromise;
 
 const allowedOrigins = [
   "http://localhost:5173",
@@ -49,18 +50,45 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
+  res.json({
+    status: "ok",
+    database:
+      mongoose.connection.readyState === 1 ? "connected" : "not connected",
+    hasMongoUri: Boolean(process.env.MONGODB_URI),
+    hasJwtSecret: Boolean(process.env.JWT_SECRET),
+  });
+});
+
+const connectToDatabase = async () => {
+  if (mongoose.connection.readyState === 1) {
+    return;
+  }
+
+  if (!process.env.MONGODB_URI) {
+    throw new Error("MONGODB_URI is not configured");
+  }
+
+  dbConnectionPromise ||= mongoose.connect(process.env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 10000,
+  });
+
+  await dbConnectionPromise;
+};
+
+app.use("/api", async (req, res, next) => {
+  try {
+    await connectToDatabase();
+    next();
+  } catch (error) {
+    console.error("Database connection error:", error);
+    res.status(500).json({ message: error.message || "Database connection error" });
+  }
 });
 
 app.use("/api/blogs", blogRoutes);
 app.use("/api/posts", blogRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/auth", userRoutes);
-
-mongoose
-  .connect(process.env.MONGODB_URI)
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("Connection error:", err));
 
 if (process.env.VERCEL !== "1") {
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
