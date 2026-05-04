@@ -9,37 +9,31 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+app.use(express.json());
+
 const allowedOrigins = process.env.CLIENT_URL
-  ? process.env.CLIENT_URL.split(",").map((origin) => origin.trim())
-  : ["*"];
-
-const isAllowedOrigin = (origin) => {
-  if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
-    return true;
-  }
-
-  try {
-    const { hostname } = new URL(origin);
-    return hostname.endsWith(".vercel.app");
-  } catch {
-    return false;
-  }
-};
+  ? process.env.CLIENT_URL.split(",").map((o) => o.trim())
+  : [];
 
 app.use(
   cors({
-    origin(origin, callback) {
-      if (isAllowedOrigin(origin)) {
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      if (origin.includes(".vercel.app")) {
         return callback(null, true);
       }
 
       return callback(new Error("Not allowed by CORS"));
     },
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // ✅ IMPORTANT
     credentials: true,
   })
 );
-app.use(express.json());
+app.options("*", cors());
 
 app.get("/", (req, res) => {
   res.json({ message: "Blog API is running" });
@@ -56,8 +50,8 @@ app.use("/api/auth", userRoutes);
 
 mongoose
   .connect(process.env.MONGODB_URI)
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("Connection error:", err));
+  .then(() => console.log("✅ Connected to MongoDB"))
+  .catch((err) => console.error("❌ Connection error:", err));
 
 if (process.env.VERCEL !== "1") {
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
